@@ -40,7 +40,7 @@ const App: React.FC = () => {
         <BrowserRouter>
           <SidebarProvider>
             <div className="min-h-screen flex flex-col md:flex-row w-full">
-              <AppSidebar />
+              <AppSidebar/>
               <main className="flex-1 flex flex-col">
                 <header className="h-14 border-b flex items-center px-4 bg-background sticky top-0 z-10">
                   <SidebarTrigger />

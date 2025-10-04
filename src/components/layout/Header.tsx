@@ -9,7 +9,7 @@ export const Header = () => {
             <BarChart3 className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Life Tracker</h1>
+            <h1 className="text-xl font-bold text-foreground">Cognito</h1>
             <p className="text-sm text-muted-foreground">Track your finance, study & sleep</p>
           </div>
         </div>
