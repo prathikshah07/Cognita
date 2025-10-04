@@ -14,6 +14,9 @@ const CEREBRAS_API_BASE = (process.env.CEREBRAS_API_BASE as string | undefined) 
 const LLAMA_API_KEY = process.env.LLAMA_API_KEY as string | undefined;
 const LLAMA_API_BASE = (process.env.LLAMA_API_BASE as string | undefined) || 'https://api.llama-api.com';
 
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN as string | undefined;
+const REPLICATE_API_BASE = (process.env.REPLICATE_API_BASE as string | undefined) || 'https://api.replicate.com/v1';
+
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   // We avoid crashing in dev; requests will fail with 500 and clear message instead
   console.warn('[gateway] Missing SUPABASE_URL or SUPABASE_ANON_KEY in env. Auth and logging will fail.');
@@ -25,9 +28,10 @@ app.use(express.json({ limit: '1mb' }));
 
 // Types
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+type Provider = 'cerebras' | 'meta-llama' | 'replicate';
 
 const ChatRequestSchema = z.object({
-  provider: z.enum(['cerebras', 'meta-llama']),
+  provider: z.enum(['cerebras', 'meta-llama', 'replicate', 'auto', 'ensemble']),
   model: z.string().min(1),
   messages: z.array(
     z.object({
@@ -36,7 +40,9 @@ const ChatRequestSchema = z.object({
     })
   ).min(1),
   temperature: z.number().min(0).max(2).optional(),
-  max_tokens: z.number().min(1).max(8192).optional(),
+  max_tokens: z.number().min(1).max(32768).optional(),
+  providers: z.array(z.enum(['cerebras', 'meta-llama', 'replicate'])).optional(),
+  strategy: z.enum(['fallback', 'combine']).optional(),
 });
 
 function getSupabaseForToken(jwt: string | undefined) {
@@ -157,6 +163,68 @@ async function callLlamaChat(args: {
   return text;
 }
 
+async function callReplicateChat(args: {
+  model: string; // e.g., 'meta/llama-3.1-8b-instruct' depending on Replicate model path
+  messages: ChatMessage[];
+  temperature?: number;
+  max_tokens?: number;
+}): Promise<string> {
+  if (!REPLICATE_API_TOKEN) throw new Error('REPLICATE_API_TOKEN not configured');
+  // Many Replicate models accept a single prompt. We'll join messages into a single prompt.
+  const prompt = args.messages
+    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .join('\n\n');
+
+  // Attempt OpenAI-compatible endpoint if available on Replicate
+  const openaiCompatUrl = `${REPLICATE_API_BASE.replace(/\/$/, '')}/chat/completions`;
+  const res = await fetch(openaiCompatUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      model: args.model,
+      messages: args.messages,
+      temperature: args.temperature,
+      max_tokens: args.max_tokens,
+      stream: false,
+    }),
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    const text: string | undefined = data?.choices?.[0]?.message?.content;
+    if (!text) throw new Error('No completion returned from Replicate');
+    return text;
+  }
+
+  // Fallback to generic predictions API for models that require prompt input
+  const predictionsUrl = `${REPLICATE_API_BASE.replace(/\/$/, '')}/predictions`;
+  const res2 = await fetch(predictionsUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      // For generic use we rely on model string; certain models require version hash instead
+      // If this request fails, the error will surface to the caller
+      model: args.model,
+      input: { prompt, temperature: args.temperature, max_tokens: args.max_tokens },
+    }),
+  });
+  if (!res2.ok) {
+    const text = await res2.text();
+    throw new Error(`Replicate error ${res2.status}: ${text}`);
+  }
+  const data2 = await res2.json();
+  const output = data2?.output;
+  const textOut: string | undefined = Array.isArray(output) ? output.join('') : output?.toString?.();
+  if (!textOut) throw new Error('No output returned from Replicate');
+  return textOut;
+}
+
 // Routes
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'cognita-mcp-gateway' });
@@ -176,34 +244,80 @@ app.post('/api/ai/chat', async (req, res) => {
   try {
     const userId = await verifyUserId(token);
     const promptChars = body.messages.reduce((sum, m) => sum + m.content.length, 0);
-    let text = '';
-    if (body.provider === 'cerebras') {
-      text = await callCerebrasChat({
-        model: body.model,
-        messages: body.messages,
-        temperature: body.temperature,
-        max_tokens: body.max_tokens,
-      });
-    } else {
-      text = await callLlamaChat({
-        model: body.model,
-        messages: body.messages,
-        temperature: body.temperature,
-        max_tokens: body.max_tokens,
-      });
+    const requestedProviders: Provider[] = (body.providers as Provider[] | undefined) ?? ['cerebras', 'replicate', 'meta-llama'];
+    const strategy = body.strategy ?? (body.provider === 'ensemble' ? 'combine' : body.provider === 'auto' ? 'fallback' : 'fallback');
+
+    const callByProvider = async (provider: Provider) => {
+      if (provider === 'cerebras') return callCerebrasChat(body);
+      if (provider === 'meta-llama') return callLlamaChat(body);
+      if (provider === 'replicate') return callReplicateChat(body);
+      throw new Error(`Unknown provider: ${provider}`);
+    };
+
+    if (body.provider === 'auto' || strategy === 'fallback') {
+      let lastError: any = null;
+      for (const p of requestedProviders) {
+        try {
+          const text = await callByProvider(p);
+          const latency = Date.now() - started;
+          await logAiEvent({
+            jwt: token,
+            userId,
+            provider: p,
+            model: body.model,
+            promptChars,
+            completionChars: text.length,
+            latencyMs: latency,
+            status: 'success',
+          });
+          return res.json({ content: text, model: body.model, provider: p, latency_ms: latency });
+        } catch (e) {
+          lastError = e;
+          continue;
+        }
+      }
+      throw lastError ?? new Error('All providers failed');
     }
+
+    if (body.provider === 'ensemble' || strategy === 'combine') {
+      const uniqueProviders = Array.from(new Set(requestedProviders));
+      const results = await Promise.allSettled(uniqueProviders.map((p) => callByProvider(p)));
+      const successful = results
+        .map((r, i) => ({ r, provider: uniqueProviders[i] }))
+        .filter((x) => x.r.status === 'fulfilled') as Array<{ r: PromiseFulfilledResult<string>; provider: Provider }>;
+      if (successful.length === 0) throw new Error('All providers failed');
+      const combined = successful
+        .map((x) => `### ${x.provider}\n\n${x.r.value}`)
+        .join('\n\n---\n\n');
+      const latency = Date.now() - started;
+      await logAiEvent({
+        jwt: token,
+        userId,
+        provider: 'ensemble',
+        model: body.model,
+        promptChars,
+        completionChars: combined.length,
+        latencyMs: latency,
+        status: 'success',
+      });
+      return res.json({ content: combined, model: body.model, provider: 'ensemble', latency_ms: latency });
+    }
+
+    // Direct single provider
+    const singleProvider = body.provider as Provider;
+    const text = await callByProvider(singleProvider);
     const latency = Date.now() - started;
     await logAiEvent({
       jwt: token,
       userId,
-      provider: body.provider,
+      provider: singleProvider,
       model: body.model,
       promptChars,
       completionChars: text.length,
       latencyMs: latency,
       status: 'success',
     });
-    return res.json({ content: text, model: body.model, provider: body.provider, latency_ms: latency });
+    return res.json({ content: text, model: body.model, provider: singleProvider, latency_ms: latency });
   } catch (e: any) {
     const latency = Date.now() - started;
     await logAiEvent({

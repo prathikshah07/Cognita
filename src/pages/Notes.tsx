@@ -63,7 +63,9 @@ const Notes = () => {
     try {
       setSummarizingId(id);
       const { content } = await aiChat({
-        provider: 'cerebras',
+        provider: 'auto',
+        providers: ['cerebras', 'replicate', 'meta-llama'],
+        strategy: 'fallback',
         model: 'llama3.1-8b',
         messages: [
           { role: 'system', content: 'You are a helpful study assistant who writes concise study summaries with bullet points when appropriate.' },

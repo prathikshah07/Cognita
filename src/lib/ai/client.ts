@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export type Provider = 'cerebras' | 'meta-llama';
+export type Provider = 'cerebras' | 'meta-llama' | 'replicate' | 'auto' | 'ensemble';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -13,6 +13,8 @@ export async function aiChat(options: {
   messages: ChatMessage[];
   temperature?: number;
   max_tokens?: number;
+  providers?: Array<Exclude<Provider, 'auto' | 'ensemble'>>;
+  strategy?: 'fallback' | 'combine';
 }): Promise<{ content: string }> {
   const session = (await supabase.auth.getSession()).data.session;
   const token = session?.access_token;
