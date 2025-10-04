@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { aiChat } from "@/lib/ai/client";
 import { useNotes, useAddNote, useUpdateNote, useDeleteNote } from "@/hooks/useNotes";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
@@ -17,6 +18,7 @@ const Notes = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ title: "", content: "", category: "" });
+  const [summarizingId, setSummarizingId] = useState<string | null>(null);
 
   const filteredNotes = notes.filter(
     (note) =>
@@ -52,6 +54,30 @@ const Notes = () => {
       toast.success("Note deleted");
     } catch (error) {
       toast.error("Failed to delete note");
+    }
+  };
+
+  const summarizeNote = async (id: string) => {
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+    try {
+      setSummarizingId(id);
+      const { content } = await aiChat({
+        provider: 'cerebras',
+        model: 'llama3.1-8b',
+        messages: [
+          { role: 'system', content: 'You are a helpful study assistant who writes concise study summaries with bullet points when appropriate.' },
+          { role: 'user', content: `Summarize the following note into 3-6 bullets with a one-line title. Keep important formulas or definitions.\n\nTitle: ${note.title}\nCategory: ${note.category ?? 'general'}\n---\n${note.content}` },
+        ],
+        temperature: 0.3,
+        max_tokens: 600,
+      });
+      await updateNote.mutateAsync({ id, content });
+      toast.success('Summary generated');
+    } catch (e) {
+      toast.error('Failed to summarize');
+    } finally {
+      setSummarizingId(null);
     }
   };
 
@@ -132,13 +158,23 @@ const Notes = () => {
                     <p className="text-xs text-muted-foreground mt-1">{note.category}</p>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeleteNote(note.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => summarizeNote(note.id)}
+                    disabled={summarizingId === note.id}
+                  >
+                    {summarizingId === note.id ? 'Summarizing…' : 'Summarize'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteNote(note.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-4">
