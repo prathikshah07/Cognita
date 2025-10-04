@@ -60,6 +60,26 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## AI Gateway (Cerebras + Meta Llama)
+
+An MCP-style gateway server under `server/index.ts` orchestrates Cerebras and Meta Llama chat completions and logs usage to Supabase.
+
+Dev setup:
+
+```bash
+cp .env.example .env            # Vite env (frontend)
+cp .env.example .env.server     # Gateway env (server)
+
+# Fill in VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY in .env
+# Fill in SUPABASE_URL/SUPABASE_ANON_KEY and provider keys in .env.server
+
+pnpm install
+pnpm server:dev
+pnpm dev
+```
+
+The Vite dev server proxies `/api/*` to the gateway at `http://localhost:4000`.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/3d5b6da1-b6de-4fd1-ae82-008b786cafef) and click on Share -> Publish.
