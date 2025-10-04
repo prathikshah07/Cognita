@@ -64,7 +64,7 @@ const Onboarding: React.FC = () => {
   return (
     <div className="flex flex-col h-screen items-center justify-center gap-6 bg-gradient-to-br from-purple-600 to-teal-500 text-white px-4">
       <h1 className="text-4xl font-bold">Cognita</h1>
-      <p className="text-lg opacity-90">
+      <p className="text-lg opacity-50">
         {mode === "signup" ? "Create an account" : "Sign in to continue"}
       </p>
 
@@ -88,7 +88,7 @@ const Onboarding: React.FC = () => {
           <Button
             onClick={handleEmailAuth}
             variant="outline"
-            className="text-white border-white"
+            className="text-black border-white"
             disabled={loading}
           >
             {loading ? "Loading..." : mode === "signup" ? "Sign Up" : "Sign In"}

@@ -7,10 +7,16 @@ export default function Onboarding() {
       <h1 className="text-4xl font-bold mb-2">📱 Cognita</h1>
       <p className="text-lg">Track. Learn. Balance.</p>
       <div className="mt-10 w-full max-w-xs space-y-3">
-        <Button variant="default" className="w-full">Sign in with Google</Button>
-        <Button variant="outline" className="w-full bg-white text-black">Sign in with Email</Button>
-        <Button variant="secondary" className="w-full">Create Account</Button>
+        <Button variant="default" className="w-full text-black">
+          Sign in with Google
+        </Button>
+        <Button variant="outline" className="w-full bg-white text-black">
+          Sign in with Email
+        </Button>
+        <Button variant="secondary" className="w-full text-black">
+          Create Account
+        </Button>
       </div>
     </div>
-  )
+  );
 }
