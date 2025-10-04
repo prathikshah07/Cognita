@@ -7,27 +7,36 @@ import { ExportData } from '@/components/shared/ExportData';
 import { DateRangeFilter } from '@/components/shared/DateRangeFilter';
 import { SearchBar } from '@/components/shared/SearchBar';
 import { Card } from '@/components/ui/card';
-import { StudySession, StudyGoal } from '@/types';
-import { mockStudySessions } from '@/data/mockData';
+import { StudyGoal } from '@/types';
+import { useStudySessions, useAddStudySession, useDeleteStudySession } from '@/hooks/useStudySessions';
+import { toast } from 'sonner';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Study = () => {
-  const [sessions, setSessions] = useState<StudySession[]>(mockStudySessions);
+  const { data: sessions = [], isLoading } = useStudySessions();
+  const addSession = useAddStudySession();
+  const deleteSession = useDeleteStudySession();
   const [goals, setGoals] = useState<StudyGoal[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const handleAddSession = (newSession: Omit<StudySession, 'id'>) => {
-    const session: StudySession = {
-      ...newSession,
-      id: Date.now().toString()
-    };
-    setSessions(prev => [session, ...prev]);
+  const handleAddSession = async (newSession: { subject: string; duration: number; date: string; notes?: string }) => {
+    try {
+      await addSession.mutateAsync(newSession);
+      toast.success('Study session added successfully');
+    } catch (error) {
+      toast.error('Failed to add study session');
+    }
   };
 
-  const handleDeleteSession = (id: string) => {
-    setSessions(prev => prev.filter(s => s.id !== id));
+  const handleDeleteSession = async (id: string) => {
+    try {
+      await deleteSession.mutateAsync(id);
+      toast.success('Study session deleted');
+    } catch (error) {
+      toast.error('Failed to delete study session');
+    }
   };
 
   const handleAddGoal = (newGoal: Omit<StudyGoal, 'id'>) => {

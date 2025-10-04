@@ -1,7 +1,14 @@
-import { SleepRecord } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Moon, Clock, Trash2 } from 'lucide-react';
+
+interface SleepRecord {
+  id: string;
+  date: string;
+  hours: number;
+  quality: number;
+  notes?: string;
+}
 
 interface SleepListProps {
   records: SleepRecord[];
@@ -17,15 +24,17 @@ export const SleepList = ({ records, onDelete }: SleepListProps) => {
     });
   };
 
-  const getQualityColor = (hours: number) => {
-    if (hours >= 7 && hours <= 9) return 'text-success';
-    if (hours >= 6 && hours < 7) return 'text-warning';
+  const getQualityColor = (quality: number) => {
+    if (quality >= 4) return 'text-success';
+    if (quality === 3) return 'text-warning';
     return 'text-destructive';
   };
 
-  const getQualityText = (hours: number) => {
-    if (hours >= 7 && hours <= 9) return 'Good';
-    if (hours >= 6 && hours < 7) return 'Fair';
+  const getQualityText = (quality: number) => {
+    if (quality === 5) return 'Excellent';
+    if (quality === 4) return 'Very Good';
+    if (quality === 3) return 'Good';
+    if (quality === 2) return 'Fair';
     return 'Poor';
   };
 
@@ -43,24 +52,27 @@ export const SleepList = ({ records, onDelete }: SleepListProps) => {
                   <Moon className="h-4 w-4 text-warning" />
                 </div>
                 <div>
-                  <div className="font-medium">{record.duration}h sleep</div>
+                  <div className="font-medium">{Number(record.hours)}h sleep</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <Clock className="h-3 w-3" />
-                    {record.bedtime} - {record.wakeTime} • {formatDate(record.date)}
+                    {formatDate(record.date)}
                   </div>
+                  {record.notes && (
+                    <div className="text-xs text-muted-foreground mt-1">{record.notes}</div>
+                  )}
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <div className="text-right">
-                  <div className={`text-sm font-medium ${getQualityColor(record.duration || 0)}`}>
-                    {getQualityText(record.duration || 0)}
+                  <div className={`text-sm font-medium ${getQualityColor(record.quality)}`}>
+                    {getQualityText(record.quality)}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {record.duration}h
+                    {Number(record.hours)}h
                   </div>
                 </div>
-                
+
                 {onDelete && (
                   <Button variant="ghost" size="sm" onClick={() => onDelete(record.id)}>
                     <Trash2 className="h-4 w-4 text-destructive" />

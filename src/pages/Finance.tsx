@@ -7,44 +7,61 @@ import { ExportData } from '@/components/shared/ExportData';
 import { DateRangeFilter } from '@/components/shared/DateRangeFilter';
 import { SearchBar } from '@/components/shared/SearchBar';
 import { Card } from '@/components/ui/card';
-import { Transaction, Budget } from '@/types';
-import { mockTransactions } from '@/data/mockData';
+import { useTransactions, useAddTransaction, useDeleteTransaction } from '@/hooks/useTransactions';
+import { useBudgets, useAddBudget, useDeleteBudget } from '@/hooks/useBudgets';
+import { toast } from 'sonner';
 
 const Finance = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  const addTransaction = useAddTransaction();
+  const deleteTransaction = useDeleteTransaction();
+  const { data: budgets = [], isLoading: budgetsLoading } = useBudgets();
+  const addBudget = useAddBudget();
+  const deleteBudget = useDeleteBudget();
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const handleAddTransaction = (newTransaction: Omit<Transaction, 'id'>) => {
-    const transaction: Transaction = {
-      ...newTransaction,
-      id: Date.now().toString()
-    };
-    setTransactions(prev => [transaction, ...prev]);
+  const handleAddTransaction = async (newTransaction: { amount: number; category: string; description: string; date: string; type: 'income' | 'expense' }) => {
+    try {
+      await addTransaction.mutateAsync(newTransaction);
+      toast.success('Transaction added successfully');
+    } catch (error) {
+      toast.error('Failed to add transaction');
+    }
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const handleDeleteTransaction = async (id: string) => {
+    try {
+      await deleteTransaction.mutateAsync(id);
+      toast.success('Transaction deleted');
+    } catch (error) {
+      toast.error('Failed to delete transaction');
+    }
   };
 
-  const handleAddBudget = (newBudget: Omit<Budget, 'id'>) => {
-    const budget: Budget = {
-      ...newBudget,
-      id: Date.now().toString()
-    };
-    setBudgets(prev => [...prev, budget]);
+  const handleAddBudget = async (newBudget: { category: string; amount: number; period: 'weekly' | 'monthly' }) => {
+    try {
+      await addBudget.mutateAsync(newBudget);
+      toast.success('Budget added successfully');
+    } catch (error) {
+      toast.error('Failed to add budget');
+    }
   };
 
-  const handleDeleteBudget = (id: string) => {
-    setBudgets(prev => prev.filter(b => b.id !== id));
+  const handleDeleteBudget = async (id: string) => {
+    try {
+      await deleteBudget.mutateAsync(id);
+      toast.success('Budget deleted');
+    } catch (error) {
+      toast.error('Failed to delete budget');
+    }
   };
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchesSearch = t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.note?.toLowerCase().includes(searchQuery.toLowerCase());
+        t.description?.toLowerCase().includes(searchQuery.toLowerCase());
       const transactionDate = new Date(t.date);
       const matchesDateRange = (!startDate || transactionDate >= new Date(startDate)) &&
         (!endDate || transactionDate <= new Date(endDate));
@@ -54,11 +71,11 @@ const Finance = () => {
 
   const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-  
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
   const totalExpenses = filteredTransactions
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const balance = totalIncome - totalExpenses;
 

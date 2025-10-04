@@ -6,12 +6,15 @@ import { ExportData } from '@/components/shared/ExportData';
 import { DateRangeFilter } from '@/components/shared/DateRangeFilter';
 import { SearchBar } from '@/components/shared/SearchBar';
 import { Card } from '@/components/ui/card';
-import { SleepRecord, SleepGoal } from '@/types';
-import { mockSleepRecords } from '@/data/mockData';
+import { SleepGoal } from '@/types';
+import { useSleepRecords, useAddSleepRecord, useDeleteSleepRecord } from '@/hooks/useSleepRecords';
+import { toast } from 'sonner';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Sleep = () => {
-  const [records, setRecords] = useState<SleepRecord[]>(mockSleepRecords);
+  const { data: records = [], isLoading } = useSleepRecords();
+  const addRecord = useAddSleepRecord();
+  const deleteRecord = useDeleteSleepRecord();
   const [sleepGoal, setSleepGoal] = useState<SleepGoal>({
     targetHours: 8,
     targetBedtime: '22:00'
@@ -20,16 +23,22 @@ const Sleep = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const handleAddRecord = (newRecord: Omit<SleepRecord, 'id'>) => {
-    const record: SleepRecord = {
-      ...newRecord,
-      id: Date.now().toString()
-    };
-    setRecords(prev => [record, ...prev]);
+  const handleAddRecord = async (newRecord: { date: string; hours: number; quality: number; notes?: string }) => {
+    try {
+      await addRecord.mutateAsync(newRecord);
+      toast.success('Sleep record added successfully');
+    } catch (error) {
+      toast.error('Failed to add sleep record');
+    }
   };
 
-  const handleDeleteRecord = (id: string) => {
-    setRecords(prev => prev.filter(r => r.id !== id));
+  const handleDeleteRecord = async (id: string) => {
+    try {
+      await deleteRecord.mutateAsync(id);
+      toast.success('Sleep record deleted');
+    } catch (error) {
+      toast.error('Failed to delete sleep record');
+    }
   };
 
   const filteredRecords = useMemo(() => {
@@ -43,26 +52,23 @@ const Sleep = () => {
   }, [records, searchQuery, startDate, endDate]);
 
   const stats = useMemo(() => {
-    const totalHours = filteredRecords.reduce((sum, record) => sum + (record.duration || 0), 0);
+    const totalHours = filteredRecords.reduce((sum, record) => sum + Number(record.hours), 0);
     const averageHours = filteredRecords.length > 0 ? Math.round(totalHours / filteredRecords.length * 10) / 10 : 0;
-    const lastNightHours = filteredRecords[0]?.duration || 0;
+    const lastNightHours = Number(filteredRecords[0]?.hours) || 0;
     
     const chartData = filteredRecords
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map(record => ({
         date: new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        hours: record.duration || 0
+        hours: Number(record.hours)
       }));
 
     const qualityDistribution = filteredRecords.reduce((acc, record) => {
-      if (record.quality) {
-        acc[record.quality] = (acc[record.quality] || 0) + 1;
-      } else {
-        const hours = record.duration || 0;
-        if (hours >= 7 && hours <= 9) acc.good++;
-        else if (hours >= 6 && hours < 7) acc.fair++;
-        else acc.poor++;
-      }
+      const quality = record.quality;
+      if (quality === 5) acc.excellent++;
+      else if (quality === 4) acc.good++;
+      else if (quality === 3) acc.fair++;
+      else acc.poor++;
       return acc;
     }, { poor: 0, fair: 0, good: 0, excellent: 0 } as Record<string, number>);
 

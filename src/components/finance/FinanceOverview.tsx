@@ -1,22 +1,24 @@
 import { DashboardCard } from '../dashboard/DashboardCard';
 import { DollarSign } from 'lucide-react';
-import { mockTransactions } from '@/data/mockData';
+import { useTransactions } from '@/hooks/useTransactions';
 import { useMemo } from 'react';
 
 export const FinanceOverview = () => {
+  const { data: transactions = [], isLoading } = useTransactions();
+
   const stats = useMemo(() => {
-    const totalIncome = mockTransactions
+    const totalIncome = transactions
       .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-    
-    const totalExpenses = mockTransactions
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalExpenses = transactions
       .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-    
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
     const balance = totalIncome - totalExpenses;
-    
+
     return { totalIncome, totalExpenses, balance };
-  }, []);
+  }, [transactions]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -25,6 +27,18 @@ export const FinanceOverview = () => {
     }).format(amount);
   };
 
+  if (isLoading) {
+    return (
+      <DashboardCard
+        title="Finance"
+        icon={DollarSign}
+        value="Loading..."
+        subtitle="Current Balance"
+        gradient="bg-gradient-success"
+      />
+    );
+  }
+
   return (
     <DashboardCard
       title="Finance"
@@ -32,7 +46,7 @@ export const FinanceOverview = () => {
       value={formatCurrency(stats.balance)}
       subtitle="Current Balance"
       trend={{
-        value: `+${formatCurrency(stats.totalIncome - stats.totalExpenses)}`,
+        value: `${stats.balance >= 0 ? '+' : ''}${formatCurrency(stats.balance)}`,
         isPositive: stats.balance > 0
       }}
       gradient="bg-gradient-success"

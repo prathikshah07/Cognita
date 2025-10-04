@@ -1,26 +1,44 @@
 import { DashboardCard } from '../dashboard/DashboardCard';
 import { BookOpen } from 'lucide-react';
-import { mockStudySessions } from '@/data/mockData';
+import { useStudySessions } from '@/hooks/useStudySessions';
 import { useMemo } from 'react';
 
 export const StudyOverview = () => {
+  const { data: studySessions = [], isLoading } = useStudySessions();
+
   const stats = useMemo(() => {
-    const totalMinutes = mockStudySessions.reduce((sum, session) => sum + session.duration, 0);
+    const totalMinutes = studySessions.reduce((sum, session) => sum + session.duration, 0);
     const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
-    
-    const subjectCounts = mockStudySessions.reduce((acc, session) => {
+
+    const subjectCounts = studySessions.reduce((acc, session) => {
       acc[session.subject] = (acc[session.subject] || 0) + session.duration;
       return acc;
     }, {} as Record<string, number>);
-    
+
     const topSubject = Object.entries(subjectCounts)
       .sort(([,a], [,b]) => b - a)[0]?.[0] || 'None';
-    
-    // Last 7 days
-    const weeklyHours = Math.round(totalMinutes / 60 * 10) / 10; // Mock data - in real app would filter by date
-    
-    return { totalHours, topSubject, weeklyHours };
-  }, []);
+
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weeklyMinutes = studySessions
+      .filter(s => new Date(s.date) >= weekAgo)
+      .reduce((sum, s) => sum + s.duration, 0);
+    const weeklyHours = Math.round(weeklyMinutes / 60 * 10) / 10;
+
+    return { totalHours, topSubject, weeklyHours, sessionCount: studySessions.length };
+  }, [studySessions]);
+
+  if (isLoading) {
+    return (
+      <DashboardCard
+        title="Study"
+        icon={BookOpen}
+        value="Loading..."
+        subtitle="Total Study Time"
+        gradient="bg-gradient-primary"
+      />
+    );
+  }
 
   return (
     <DashboardCard
@@ -41,7 +59,7 @@ export const StudyOverview = () => {
         </div>
         <div className="flex justify-between">
           <span className="text-white/70">Sessions</span>
-          <span className="font-semibold text-white">{mockStudySessions.length}</span>
+          <span className="font-semibold text-white">{stats.sessionCount}</span>
         </div>
       </div>
     </DashboardCard>
