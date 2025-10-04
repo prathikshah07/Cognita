@@ -5,17 +5,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SleepRecord } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface SleepFormProps {
-  onAdd: (record: { date: string; hours: number; quality: number; notes?: string }) => void;
+  onAdd: (record: Omit<SleepRecord, 'id'>) => void;
 }
 
 export const SleepForm = ({ onAdd }: SleepFormProps) => {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     bedtime: '',
     wakeTime: '',
     date: new Date().toISOString().split('T')[0],
-    quality: '3',
+    quality: 'good' as 'poor' | 'fair' | 'good' | 'excellent',
     notes: ''
   });
 
@@ -36,26 +39,38 @@ export const SleepForm = ({ onAdd }: SleepFormProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!formData.bedtime || !formData.wakeTime) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in bedtime and wake time.",
+        variant: "destructive"
+      });
       return;
     }
 
-    const hours = calculateDuration(formData.bedtime, formData.wakeTime);
+    const duration = calculateDuration(formData.bedtime, formData.wakeTime);
 
     onAdd({
+      bedtime: formData.bedtime,
+      wakeTime: formData.wakeTime,
       date: formData.date,
-      hours,
-      quality: parseInt(formData.quality),
-      notes: formData.notes || undefined
+      duration,
+      quality: formData.quality,
+      notes: formData.notes
     });
 
     setFormData({
       bedtime: '',
       wakeTime: '',
       date: new Date().toISOString().split('T')[0],
-      quality: '3',
+      quality: 'good',
       notes: ''
+    });
+
+    toast({
+      title: "Sleep Record Added",
+      description: `${duration} hours of sleep recorded.`,
     });
   };
 
@@ -98,18 +113,17 @@ export const SleepForm = ({ onAdd }: SleepFormProps) => {
 
         <div>
           <Label htmlFor="quality">Sleep Quality</Label>
-          <Select value={formData.quality} onValueChange={(value: string) =>
+          <Select value={formData.quality} onValueChange={(value: 'poor' | 'fair' | 'good' | 'excellent') =>
             setFormData(prev => ({ ...prev, quality: value }))
           }>
             <SelectTrigger id="quality">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1">Poor (1)</SelectItem>
-              <SelectItem value="2">Fair (2)</SelectItem>
-              <SelectItem value="3">Good (3)</SelectItem>
-              <SelectItem value="4">Very Good (4)</SelectItem>
-              <SelectItem value="5">Excellent (5)</SelectItem>
+              <SelectItem value="poor">Poor</SelectItem>
+              <SelectItem value="fair">Fair</SelectItem>
+              <SelectItem value="good">Good</SelectItem>
+              <SelectItem value="excellent">Excellent</SelectItem>
             </SelectContent>
           </Select>
         </div>

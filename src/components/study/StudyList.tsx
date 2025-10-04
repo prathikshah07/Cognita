@@ -1,14 +1,7 @@
+import { StudySession } from '@/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Clock, Trash2 } from 'lucide-react';
-
-interface StudySession {
-  id: string;
-  subject: string;
-  duration: number;
-  date: string;
-  notes?: string;
-}
 
 interface StudyListProps {
   sessions: StudySession[];

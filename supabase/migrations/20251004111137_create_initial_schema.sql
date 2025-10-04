@@ -1,5 +1,5 @@
 /*
-  # Initial Schema for Student Life Management App
+  # Initial Schema for Cognita
 
   ## Overview
   Creates tables for managing student life including study sessions, sleep tracking, 

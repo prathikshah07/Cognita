@@ -9,7 +9,7 @@ export default function SplashScreen() {
         transition={{ duration: 0.6 }}
         className="text-center"
       >
-        <h1 className="text-4xl font-bold text-white">Cognito</h1>
+        <h1 className="text-4xl font-bold text-white">Cognita</h1>
         <p className="text-lg italic text-white/80">Track. Learn. Balance</p>
       </motion.div>
     </div>

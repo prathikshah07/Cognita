@@ -28,9 +28,8 @@ const items = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Finance", url: "/finance", icon: CreditCard },
   { title: "Study", url: "/study", icon: BookOpen },
-  { title: "Sleep", url: "/sleep", icon: Moon },
+  // { title: "Sleep", url: "/sleep", icon: Moon },
   { title: "Notes", url: "/notes", icon: Book },
-  { title: "Profile", url: "/profile", icon: User },
 ];
 
 export function AppSidebar() {
@@ -44,7 +43,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Life Tracker</SidebarGroupLabel>
+          <SidebarGroupLabel>Cognita</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (

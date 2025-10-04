@@ -1,97 +1,44 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+// hooks/useTransactions.ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
-export interface Transaction {
-  id: string;
-  user_id: string;
-  amount: number;
-  category: string;
-  description: string;
-  date: string;
-  type: 'income' | 'expense';
-  created_at: string;
-}
-
-export function useTransactions() {
-  const { user } = useAuth();
-
-  return useQuery({
-    queryKey: ['transactions', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      return data as Transaction[];
-    },
-    enabled: !!user,
+export const useTransactions = () => {
+  return useQuery(["transactions"], async () => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .order("date", { ascending: false });
+    if (error) throw error;
+    return data;
   });
-}
+};
 
-export function useAddTransaction() {
-  const { user } = useAuth();
+export const useAddTransaction = () => {
   const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (transaction: Omit<Transaction, 'id' | 'user_id' | 'created_at'>) => {
-      if (!user) throw new Error('User not authenticated');
-
+  return useMutation(
+    async (transaction: any) => {
       const { data, error } = await supabase
-        .from('transactions')
-        .insert({ ...transaction, user_id: user.id })
-        .select()
-        .single();
-
+        .from("transactions")
+        .insert([transaction]);
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    },
-  });
-}
+    { onSuccess: () => queryClient.invalidateQueries(["transactions"]) }
+  );
+};
 
-export function useUpdateTransaction() {
+export const useDeleteTransaction = () => {
   const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Transaction> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('transactions')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    },
-  });
-}
-
-export function useDeleteTransaction() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
+  return useMutation(
+    async (id: string) => {
       const { error } = await supabase
-        .from('transactions')
+        .from("transactions")
         .delete()
-        .eq('id', id);
-
+        .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    },
-  });
-}
+    { onSuccess: () => queryClient.invalidateQueries(["transactions"]) }
+  );
+};
+
+// Similar hooks can be created for budgets

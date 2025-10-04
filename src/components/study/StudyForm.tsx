@@ -4,23 +4,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StudySession } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface StudyFormProps {
-  onAdd: (session: { subject: string; duration: number; date: string; notes?: string }) => void;
+  onAdd: (session: Omit<StudySession, 'id'>) => void;
 }
 
 export const StudyForm = ({ onAdd }: StudyFormProps) => {
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     subject: '',
     duration: '',
     date: new Date().toISOString().split('T')[0],
-    notes: ''
+    notes: '',
+    priority: 'medium' as 'low' | 'medium' | 'high'
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!formData.subject || !formData.duration) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in subject and duration.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -28,14 +38,21 @@ export const StudyForm = ({ onAdd }: StudyFormProps) => {
       subject: formData.subject,
       duration: parseInt(formData.duration),
       date: formData.date,
-      notes: formData.notes || undefined
+      notes: formData.notes,
+      priority: formData.priority
     });
 
     setFormData({
       subject: '',
       duration: '',
       date: new Date().toISOString().split('T')[0],
-      notes: ''
+      notes: '',
+      priority: 'medium'
+    });
+
+    toast({
+      title: "Study Session Added",
+      description: `${formData.duration} minutes of ${formData.subject} recorded.`,
     });
   };
 
@@ -53,7 +70,7 @@ export const StudyForm = ({ onAdd }: StudyFormProps) => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="duration">Duration (minutes)</Label>
             <Input
@@ -73,6 +90,21 @@ export const StudyForm = ({ onAdd }: StudyFormProps) => {
               value={formData.date}
               onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
             />
+          </div>
+          <div>
+            <Label htmlFor="priority">Priority</Label>
+            <Select value={formData.priority} onValueChange={(value: 'low' | 'medium' | 'high') =>
+              setFormData(prev => ({ ...prev, priority: value }))
+            }>
+              <SelectTrigger id="priority">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

@@ -26,7 +26,7 @@ export const DashboardCard = ({
 }: DashboardCardProps) => {
   return (
     <Card className={`relative overflow-hidden border-0 shadow-lg transition-smooth hover:shadow-glow ${gradient}`}>
-      <div className="absolute inset-0 bg-gradient-card opacity-90" />
+      <div className="absolute inset-0 bg-gradient-card opacity-50" />
       <div className="relative p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">

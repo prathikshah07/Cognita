@@ -1,73 +1,135 @@
-# Welcome to your Lovable project
+# Cognita
 
-## Project info
+![Cognita Banner](./assets/banner.png)
 
-**URL**: https://lovable.dev/projects/3d5b6da1-b6de-4fd1-ae82-008b786cafef
+**Cognita** is a cross-platform gamified learning platform designed to make education interactive, adaptive, and fun. It combines story-driven modules, quizzes, progress tracking, and gamification to help students learn core subjects efficiently.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🚀 Features
 
-**Use Lovable**
+* **Interactive Learning Modules**: Story-driven lessons for math, science, and language.
+* **Gamification**: Points, badges, levels, and achievements to motivate learning.
+* **Personalized Dashboard**: Track performance, streaks, and progress.
+* **Search and Filter**: Easily find lessons and track progress using search and date filters.
+* **Export Data**: Export learning history or achievements in CSV format.
+* **Sleep & Wellness Tracking**: Integrated modules like sleep tracking for holistic development.
+* **Responsive UI**: Built with Tailwind CSS for clean and responsive design.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3d5b6da1-b6de-4fd1-ae82-008b786cafef) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 📚 Technologies
 
-**Use your preferred IDE**
+* **Frontend**: React + Vite + TypeScript + Tailwind CSS
+* **Backend**: Supabase (PostgreSQL, Auth, Storage)
+* **Charts & Visualizations**: Recharts
+* **State Management**: React hooks & Context API
+* **Optional Features**: Export CSV, date filtering, search, gamification engine
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## ⚡ Getting Started
 
-Follow these steps:
+### Prerequisites
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+* Node.js ≥ 18
+* npm or yarn
+* Supabase account
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Setup
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. **Clone the repo**
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+git clone https://github.com/yourusername/cognita.git
+cd cognita
 ```
 
-**Edit a file directly in GitHub**
+2. **Install dependencies**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm install
+# or
+yarn
+```
 
-**Use GitHub Codespaces**
+3. **Configure environment variables**
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Create a `.env` file in the root:
 
-## What technologies are used for this project?
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-This project is built with:
+4. **Run the development server**
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-## How can I deploy this project?
+Open [http://localhost:5173](http://localhost:5173) to view in your browser.
 
-Simply open [Lovable](https://lovable.dev/projects/3d5b6da1-b6de-4fd1-ae82-008b786cafef) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+## 🗂 Project Structure
 
-Yes, you can!
+```
+src/
+├─ components/        # Reusable components
+│  ├─ sleep/          # Sleep tracking components
+│  ├─ shared/         # Shared components like DateRangeFilter, SearchBar
+├─ pages/             # App pages
+├─ lib/               # Supabase client and utilities
+├─ types/             # TypeScript interfaces
+├─ data/              # Mock data for development/testing
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 🎮 Gamification
+
+* Points system for module completion
+* Badges for milestones (e.g., "Fast Learner", "Loop Master")
+* Leveling based on accumulated points
+* Leaderboards to track top performers
+
+---
+
+## 🧩 Future Improvements
+
+* Mobile app wrapper for iOS/Android
+* Offline-first capabilities with local caching
+* Multilingual support for regional languages
+* Story-based AR modules for immersive learning
+
+---
+
+## 📝 Contributing
+
+1. Fork the repository
+2. Create a branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
+
+---
+
+## 📜 License
+
+MIT License © 2025 [Your Name]
+
+---
+
+## 🔗 Links
+
+* [Supabase Project Dashboard](https://app.supabase.com)
+* [Cognita Demo](#)
+
+---
+
+If you want, I can also make a **visually rich version with badges, screenshots, and a project demo GIF** that looks more like a polished GitHub landing page.
+
+Do you want me to do that?

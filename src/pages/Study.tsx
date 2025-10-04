@@ -1,87 +1,153 @@
-import { useState, useMemo } from 'react';
-import { StudyForm } from '@/components/study/StudyForm';
-import { StudyList } from '@/components/study/StudyList';
-import { StudyGoals } from '@/components/study/StudyGoals';
-import { PomodoroTimer } from '@/components/study/PomodoroTimer';
-import { ExportData } from '@/components/shared/ExportData';
-import { DateRangeFilter } from '@/components/shared/DateRangeFilter';
-import { SearchBar } from '@/components/shared/SearchBar';
-import { Card } from '@/components/ui/card';
-import { StudyGoal } from '@/types';
-import { useStudySessions, useAddStudySession, useDeleteStudySession } from '@/hooks/useStudySessions';
-import { toast } from 'sonner';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState, useEffect, useMemo } from "react";
+import { StudyForm } from "@/components/study/StudyForm";
+import { StudyList } from "@/components/study/StudyList";
+import { StudyGoals } from "@/components/study/StudyGoals";
+import { PomodoroTimer } from "@/components/study/PomodoroTimer";
+import { ExportData } from "@/components/shared/ExportData";
+import { DateRangeFilter } from "@/components/shared/DateRangeFilter";
+import { SearchBar } from "@/components/shared/SearchBar";
+import { Card } from "@/components/ui/card";
+import { supabase } from "@/lib/supabaseClient";
+import { StudySession, StudyGoal } from "@/types";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 const Study = () => {
-  const { data: sessions = [], isLoading } = useStudySessions();
-  const addSession = useAddStudySession();
-  const deleteSession = useDeleteStudySession();
+  const [sessions, setSessions] = useState<StudySession[]>([]);
   const [goals, setGoals] = useState<StudyGoal[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const handleAddSession = async (newSession: { subject: string; duration: number; date: string; notes?: string }) => {
-    try {
-      await addSession.mutateAsync(newSession);
-      toast.success('Study session added successfully');
-    } catch (error) {
-      toast.error('Failed to add study session');
-    }
+  // Fetch sessions
+  const fetchSessions = async () => {
+    const { data, error } = await supabase
+      .from("study_sessions")
+      .select("*")
+      .order("date", { ascending: false });
+
+    if (error) console.error("Error fetching sessions:", error.message);
+    else setSessions(data || []);
   };
 
+  // Fetch goals
+  const fetchGoals = async () => {
+    const { data, error } = await supabase
+      .from("study_goals")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) console.error("Error fetching goals:", error.message);
+    else setGoals(data || []);
+  };
+
+  useEffect(() => {
+    fetchSessions();
+    fetchGoals();
+  }, []);
+
+  // Add session
+  const handleAddSession = async (newSession: Omit<StudySession, "id">) => {
+    const { data, error } = await supabase
+      .from("study_sessions")
+      .insert([newSession])
+      .select()
+      .single();
+
+    if (error) console.error("Error adding session:", error.message);
+    else if (data) setSessions((prev) => [data, ...prev]);
+  };
+
+  // Delete session
   const handleDeleteSession = async (id: string) => {
-    try {
-      await deleteSession.mutateAsync(id);
-      toast.success('Study session deleted');
-    } catch (error) {
-      toast.error('Failed to delete study session');
-    }
+    const { error } = await supabase
+      .from("study_sessions")
+      .delete()
+      .eq("id", id);
+
+    if (error) console.error("Error deleting session:", error.message);
+    else setSessions((prev) => prev.filter((s) => s.id !== id));
   };
 
-  const handleAddGoal = (newGoal: Omit<StudyGoal, 'id'>) => {
-    const goal: StudyGoal = {
-      ...newGoal,
-      id: Date.now().toString()
-    };
-    setGoals(prev => [...prev, goal]);
+  // Add goal
+  const handleAddGoal = async (newGoal: Omit<StudyGoal, "id">) => {
+    const { data, error } = await supabase
+      .from("study_goals")
+      .insert([newGoal])
+      .select()
+      .single();
+
+    if (error) console.error("Error adding goal:", error.message);
+    else if (data) setGoals((prev) => [...prev, data]);
   };
 
-  const handleDeleteGoal = (id: string) => {
-    setGoals(prev => prev.filter(g => g.id !== id));
+  // Delete goal
+  const handleDeleteGoal = async (id: string) => {
+    const { error } = await supabase.from("study_goals").delete().eq("id", id);
+
+    if (error) console.error("Error deleting goal:", error.message);
+    else setGoals((prev) => prev.filter((g) => g.id !== id));
   };
 
-  const handleToggleGoalComplete = (id: string) => {
-    setGoals(prev => prev.map(g => 
-      g.id === id ? { ...g, completed: !g.completed } : g
-    ));
+  // Toggle goal complete
+  const handleToggleGoalComplete = async (id: string) => {
+    const goal = goals.find((g) => g.id === id);
+    if (!goal) return;
+
+    const { data, error } = await supabase
+      .from("study_goals")
+      .update({ completed: !goal.completed })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) console.error("Error toggling goal:", error.message);
+    else if (data)
+      setGoals((prev) => prev.map((g) => (g.id === id ? data : g)));
   };
 
+  // Filtered sessions
   const filteredSessions = useMemo(() => {
-    return sessions.filter(s => {
-      const matchesSearch = s.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    return sessions.filter((s) => {
+      const matchesSearch =
+        s.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.notes?.toLowerCase().includes(searchQuery.toLowerCase());
-      const sessionDate = new Date(s.date);
-      const matchesDateRange = (!startDate || sessionDate >= new Date(startDate)) &&
+      const sessionDate = new Date(s.date ?? "");
+      const matchesDateRange =
+        (!startDate || sessionDate >= new Date(startDate)) &&
         (!endDate || sessionDate <= new Date(endDate));
       return matchesSearch && matchesDateRange;
     });
   }, [sessions, searchQuery, startDate, endDate]);
 
+  // Stats
   const stats = useMemo(() => {
-    const totalMinutes = filteredSessions.reduce((sum, session) => sum + session.duration, 0);
-    const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
-    
-    const subjectTotals = filteredSessions.reduce((acc, session) => {
-      acc[session.subject] = (acc[session.subject] || 0) + session.duration;
+    const totalMinutes = filteredSessions.reduce(
+      (sum, s) => sum + s.duration,
+      0
+    );
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+
+    const subjectTotals = filteredSessions.reduce((acc, s) => {
+      acc[s.subject] = (acc[s.subject] || 0) + s.duration;
       return acc;
     }, {} as Record<string, number>);
-    
+
     const chartData = filteredSessions
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .map(session => ({
-        date: new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        hours: Math.round(session.duration / 60 * 10) / 10
+      .map((session) => ({
+        date: new Date(session.date ?? "").toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        hours: Math.round((session.duration / 60) * 10) / 10,
       }));
 
     return { totalHours, subjectTotals, chartData };
@@ -92,10 +158,18 @@ const Study = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Study Tracker</h1>
-            <p className="text-muted-foreground">Log and track your study sessions</p>
+            <h1 className="text-3xl font-bold text-foreground">
+              Study Tracker
+            </h1>
+            <p className="text-muted-foreground">
+              Log and track your study sessions
+            </p>
           </div>
-          <ExportData data={filteredSessions} filename="study-sessions" label="Export" />
+          <ExportData
+            data={filteredSessions}
+            filename="study-sessions"
+            label="Export"
+          />
         </div>
 
         {/* Summary Cards */}
@@ -110,12 +184,19 @@ const Study = () => {
           </div>
           <div className="p-6 rounded-lg bg-gradient-primary text-white">
             <div className="text-sm opacity-90">Subjects</div>
-            <div className="text-2xl font-bold">{Object.keys(stats.subjectTotals).length}</div>
+            <div className="text-2xl font-bold">
+              {Object.keys(stats.subjectTotals).length}
+            </div>
           </div>
           <div className="p-6 rounded-lg bg-gradient-primary text-white">
             <div className="text-sm opacity-90">Avg per Session</div>
             <div className="text-2xl font-bold">
-              {filteredSessions.length > 0 ? Math.round(stats.totalHours / filteredSessions.length * 10) / 10 : 0}h
+              {filteredSessions.length > 0
+                ? Math.round(
+                    (stats.totalHours / filteredSessions.length) * 10
+                  ) / 10
+                : 0}
+              h
             </div>
           </div>
         </div>
@@ -141,29 +222,29 @@ const Study = () => {
           <h3 className="text-lg font-semibold mb-4">Study Time Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={stats.chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="date" 
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+              />
+              <XAxis
+                dataKey="date"
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
               />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-              />
-              <Tooltip 
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip
                 contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
                 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="hours" 
-                stroke="hsl(262 83% 58%)" 
+              <Line
+                type="monotone"
+                dataKey="hours"
+                stroke="hsl(262 83% 58%)"
                 strokeWidth={2}
-                dot={{ fill: 'hsl(262 83% 58%)', strokeWidth: 2, r: 4 }}
+                dot={{ fill: "hsl(262 83% 58%)", strokeWidth: 2, r: 4 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -174,12 +255,15 @@ const Study = () => {
           <h3 className="text-lg font-semibold mb-4">Subject Breakdown</h3>
           <div className="space-y-2">
             {Object.entries(stats.subjectTotals)
-              .sort(([,a], [,b]) => b - a)
+              .sort(([, a], [, b]) => b - a)
               .map(([subject, minutes]) => (
-                <div key={subject} className="flex justify-between items-center p-2 rounded border border-border">
+                <div
+                  key={subject}
+                  className="flex justify-between items-center p-2 rounded border border-border"
+                >
                   <span className="font-medium">{subject}</span>
                   <span className="text-primary font-semibold">
-                    {Math.round(minutes / 60 * 10) / 10}h
+                    {Math.round((minutes / 60) * 10) / 10}h
                   </span>
                 </div>
               ))}
@@ -206,7 +290,7 @@ const Study = () => {
         {/* Form and List */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <StudyForm onAdd={handleAddSession} />
-          <StudyList 
+          <StudyList
             sessions={filteredSessions}
             onDelete={handleDeleteSession}
           />
